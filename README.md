@@ -35,15 +35,13 @@ npm run screenshot
 
 ## Co podmienić przed publikacją
 
+Numer telefonu (570 941 162) i klucz formularza web3forms są już wpisane. Działalność nierejestrowana, więc strona nie zawiera NIP, REGON ani wpisu w CEIDG. Zostaje:
+
 | Co                          | Gdzie                                                                 |
 |-----------------------------|-----------------------------------------------------------------------|
-| Numer telefonu              | `public/index.html`, `public/polityka-prywatnosci.html`, `public/regulamin.html` (linki `tel:+48000000000` oraz widoczne `+48 XXX XXX XXX`) |
-| Klucz formularza web3forms  | `public/index.html`, pole `WEB3FORMS_ACCESS_KEY_PLACEHOLDER`           |
 | Kod Google Search Console   | wszystkie pliki HTML, `GOOGLE_SEARCH_CONSOLE_VERIFICATION_PLACEHOLDER` |
-| NIP                         | stopka oraz dokumenty prawne, `XXXXXXXXXX`                             |
-| REGON                       | stopka, `XXXXXXXXX`                                                    |
-| Adres siedziby              | `public/polityka-prywatnosci.html`, `public/regulamin.html`           |
-| E-mail                      | `kontakt@krystiangrzyb.pl` (jeśli ma być inny)                        |
+| E-mail                      | `kontakt@krystiangrzyb.pl` (jeśli ma być inny, podmień w plikach HTML) |
+| Opinie Google (opcjonalnie) | sekcja Opinie linkuje do profilu Google; aby pokazać karty opinii na stronie, dodaj widżet lub prześlij treść opinii |
 
 ## Formularz kontaktowy (web3forms)
 
