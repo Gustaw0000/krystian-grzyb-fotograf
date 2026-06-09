@@ -1,0 +1,23 @@
+{
+  "name": "krystiangrzyb-fotograf",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Strona fotografa okolicznosciowego Krystian Grzyb (osiemnastki i imprezy)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "build:og": "node tools/build-og.js",
+    "screenshot": "node tools/screenshot.js",
+    "postinstall": "playwright install chromium --with-deps 2>/dev/null || playwright install chromium || true"
+  },
+  "dependencies": {
+    "compression": "^1.7.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.1",
+    "sharp": "^0.34.5"
+  }
+}

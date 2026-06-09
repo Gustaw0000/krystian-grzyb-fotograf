@@ -1,0 +1,10 @@
+/* ZESPÓŁ */
+Fotograf: Krystian Grzyb
+Rola: fotografia okolicznościowa, osiemnastki i imprezy
+Instagram: @krystiangrzyb.pl
+Kontakt: kontakt@krystiangrzyb.pl
+
+/* STRONA */
+Język: polski (pl-PL)
+Technologie: HTML, CSS, JavaScript, Node.js, Express
+Standardy: HTML5, dostępność WCAG, RODO

@@ -1,0 +1,18 @@
+{
+  "name": "Krystian Grzyb Fotografia",
+  "short_name": "Krystian Grzyb",
+  "description": "Fotograf okolicznościowy. Osiemnastki, andrzejki i imprezy.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#100C09",
+  "theme_color": "#100C09",
+  "lang": "pl-PL",
+  "dir": "ltr",
+  "orientation": "portrait-primary",
+  "categories": ["photography", "business", "lifestyle"],
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/apple-touch-icon.svg", "sizes": "180x180", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

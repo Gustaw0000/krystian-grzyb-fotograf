@@ -1,0 +1,23 @@
+node_modules/
+public/_audit/
+test-results/
+playwright-report/
+.cache/
+npm-debug.log*
+.DS_Store
+*.local
+
+# Robocze pliki projektu (zrodlowe zdjecia, podglady, archiwa)
+_photos_all/
+_previews/
+_make_previews.js
+_process_images.js
+_crop.js
+_hero.js
+_hdr.js
+_*.js
+drive-download-*.zip
+18*.jpg
+momenty-*.jpg
+*.pdf
+.pexels-key
