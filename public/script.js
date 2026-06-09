@@ -61,16 +61,17 @@
     link.addEventListener('click', function (e) {
       var hash = link.getAttribute('href');
       if (!hash || hash === '#') return;
+      if (hash === '#top' || hash === '#main') {
+        e.preventDefault();
+        closeNav();
+        window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+        return;
+      }
       var target = doc.querySelector(hash);
       if (!target) return;
       e.preventDefault();
       closeNav();
-      var top;
-      if (hash === '#top' || hash === '#main') {
-        top = 0;
-      } else {
-        top = target.getBoundingClientRect().top + window.scrollY - (header ? header.offsetHeight : headerH) - 8;
-      }
+      var top = target.getBoundingClientRect().top + window.scrollY - (header ? header.offsetHeight : headerH) - 8;
       window.scrollTo({ top: top, behavior: reduceMotion ? 'auto' : 'smooth' });
     });
   });
