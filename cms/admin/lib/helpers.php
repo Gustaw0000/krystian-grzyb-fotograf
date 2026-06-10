@@ -8,6 +8,29 @@ function h($s): string {
     return htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+// Jednorazowy nonce na zadanie (do CSP + atrybutow nonce skryptow inline)
+function cms_nonce(): string {
+    static $n = null;
+    if ($n === null) $n = rtrim(strtr(base64_encode(random_bytes(16)), '+/', '-_'), '=');
+    return $n;
+}
+
+// Naglowki bezpieczenstwa + CSP (nonce) dla stron PHP (blog, panel)
+function send_security_headers(): void {
+    if (headers_sent()) return;
+    $n = cms_nonce();
+    $csp = "default-src 'self'; base-uri 'self'; object-src 'none'; "
+        . "img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; "
+        . "script-src 'self' 'nonce-$n'; connect-src 'self' https://api.web3forms.com; "
+        . "form-action 'self' https://api.web3forms.com; frame-ancestors 'self'; upgrade-insecure-requests";
+    header('Content-Security-Policy: ' . $csp);
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
+
 // Katalog glowny strony (document root projektu) = admin/.. czyli folder z blog.php
 function project_root(): string {
     return dirname(__DIR__, 2);

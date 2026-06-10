@@ -6,3 +6,6 @@ AddType text/plain .php .phtml .phar
   Require all denied
 </FilesMatch>
 Options -ExecCGI -Indexes
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+</IfModule>

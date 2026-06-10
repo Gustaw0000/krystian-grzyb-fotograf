@@ -14,8 +14,6 @@
 <meta name="format-detection" content="telephone=yes">
 <meta name="theme-color" content="#100C09">
 <meta name="color-scheme" content="dark light">
-<meta name="google-site-verification" content="GOOGLE_SEARCH_CONSOLE_VERIFICATION_PLACEHOLDER">
-
 <meta name="geo.region" content="PL">
 <meta name="geo.placename" content="Polska">
 <meta name="language" content="Polish">
@@ -49,10 +47,11 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.json">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="image" href="/img/hero-osiemnastka.webp" fetchpriority="high">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Outfit:wght@300..800&family=Great+Vibes&display=swap" rel="stylesheet">
+<link rel="preload" href="/fonts/outfit-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/fraunces-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/great-vibes-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" as="image" href="/img/hero-osiemnastka-1280.webp" imagesrcset="/img/hero-osiemnastka-1280.webp 1280w, /img/hero-osiemnastka.webp 2000w" imagesizes="100vw" fetchpriority="high">
+<link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/styles.css">
 
 <script type="application/ld+json">
@@ -122,6 +121,7 @@
 </head>
 <body>
 <a href="#main" class="skip-link">Przejdź do treści</a>
+<span id="top" aria-hidden="true"></span>
 
 <header class="site-header" id="top-header">
   <div class="wrap header-wrap">
@@ -176,12 +176,12 @@
   </nav>
 </div>
 
-<main id="main">
+<main id="main" tabindex="-1">
 
   <!-- HERO -->
   <section class="hero" aria-labelledby="hero-h1">
     <div class="hero-media" aria-hidden="true">
-      <div class="hero-img" style="background-image:url('/img/hero-osiemnastka.webp')"></div>
+      <img class="hero-img" src="/img/hero-osiemnastka-1280.webp" srcset="/img/hero-osiemnastka-1280.webp 1280w, /img/hero-osiemnastka.webp 2000w" sizes="100vw" width="2000" height="1333" alt="" fetchpriority="high" decoding="async">
       <div class="hero-veil"></div>
     </div>
     <div class="wrap hero-inner">

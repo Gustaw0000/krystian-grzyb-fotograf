@@ -10,7 +10,7 @@ function uploads_dir(): string {
     // Wylacz wykonywanie skryptow w katalogu uploadow (defense-in-depth)
     $ht = $d . '/.htaccess';
     if (!is_file($ht)) {
-        @file_put_contents($ht, "php_flag engine off\nRemoveHandler .php .phtml .phar .cgi .pl .py .sh\nAddType text/plain .php .phtml .phar\n<FilesMatch \"\\.(php|phtml|phar|cgi|pl|py|sh)$\">\n  Require all denied\n</FilesMatch>\nOptions -ExecCGI -Indexes\n");
+        @file_put_contents($ht, "php_flag engine off\nRemoveHandler .php .phtml .phar .cgi .pl .py .sh\nAddType text/plain .php .phtml .phar\n<FilesMatch \"\\.(php|phtml|phar|cgi|pl|py|sh)$\">\n  Require all denied\n</FilesMatch>\nOptions -ExecCGI -Indexes\n<IfModule mod_headers.c>\n  Header always set X-Content-Type-Options \"nosniff\"\n</IfModule>\n");
     }
     return $d;
 }

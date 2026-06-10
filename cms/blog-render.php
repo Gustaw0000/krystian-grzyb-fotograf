@@ -12,7 +12,7 @@ function blog_head(string $title, string $desc, string $canonical, string $ogIma
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<script>document.documentElement.classList.add('js');</script>
+<script nonce="<?= h(cms_nonce()) ?>">document.documentElement.classList.add('js');</script>
 <title><?= h($title) ?></title>
 <meta name="description" content="<?= h($desc) ?>">
 <meta name="robots" content="<?= ($isArticle && ($post['status'] ?? 'published') !== 'published') ? 'noindex, nofollow' : 'index, follow, max-image-preview:large' ?>">
@@ -30,9 +30,9 @@ function blog_head(string $title, string $desc, string $canonical, string $ogIma
 <meta name="twitter:image" content="<?= h($ogImage) ?>">
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Outfit:wght@300..800&family=Great+Vibes&display=swap" rel="stylesheet">
+<link rel="preload" href="/fonts/outfit-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/fraunces-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/styles.css">
 <?php if ($isArticle && $post):
     $ld = [
@@ -44,7 +44,7 @@ function blog_head(string $title, string $desc, string $canonical, string $ogIma
         'mainEntityOfPage' => $canonical,
     ];
     if (!empty($post['cover'])) $ld['image'] = (strpos($post['cover'], 'http') === 0 ? '' : SITE_URL) . $post['cover'];
-    echo '<script type="application/ld+json">' . json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>';
+    echo '<script type="application/ld+json" nonce="' . h(cms_nonce()) . '">' . json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>';
 endif; ?>
 </head>
 <body class="page-blog">
@@ -128,7 +128,7 @@ function blog_render_index(array $posts): void {
         'Blog fotografa okolicznościowego: porady na osiemnastki i imprezy, kulisy reportaży i inspiracje.',
         SITE_URL . '/blog', SITE_URL . '/og-image.png');
     ?>
-<main id="main" class="blog-wrap">
+<main id="main" class="blog-wrap" tabindex="-1">
   <div class="wrap">
     <header class="blog-intro">
       <p class="kicker"><span class="kicker-rule"></span>Blog</p>
@@ -142,7 +142,7 @@ function blog_render_index(array $posts): void {
         <?php foreach ($posts as $p): ?>
           <article class="blog-card">
             <a href="/blog/<?= h($p['slug']) ?>" class="blog-card-media">
-              <?php if (!empty($p['cover'])): ?><img src="<?= h($p['cover']) ?>" alt="<?= h($p['coverAlt'] ?? '') ?>" loading="lazy" decoding="async"><?php else: ?><span class="blog-card-noimg">KG</span><?php endif; ?>
+              <?php if (!empty($p['cover'])): ?><img src="<?= h($p['cover']) ?>" alt="<?= h(($p['coverAlt'] ?? '') !== '' ? $p['coverAlt'] : ($p['title'] ?? '')) ?>" loading="lazy" decoding="async"><?php else: ?><span class="blog-card-noimg">KG</span><?php endif; ?>
             </a>
             <div class="blog-card-body">
               <p class="blog-card-meta"><?= h(format_date_pl($p['date'] ?? '')) ?> · <?= (int)($p['readTime'] ?? 1) ?> min</p>
@@ -166,7 +166,7 @@ function blog_render_post(array $p, bool $isPreview = false): void {
     $ogImage = $cover !== '' ? ((strpos($cover, 'http') === 0 ? '' : SITE_URL) . $cover) : SITE_URL . '/og-image.png';
     blog_head($p['title'] . ' · Blog Krystian Grzyb', $p['description'] ?? '', $canonical, $ogImage, true, $p);
     ?>
-<main id="main" class="post-wrap">
+<main id="main" class="post-wrap" tabindex="-1">
   <?php if ($isPreview): ?><div class="wrap"><p class="post-preview-flag">Podgląd<?= ($p['status'] ?? '') === 'draft' ? ' szkicu (niewidoczny publicznie)' : '' ?></p></div><?php endif; ?>
   <article class="wrap post-article">
     <p class="post-back"><a href="/blog">&larr; Wszystkie wpisy</a></p>
@@ -175,7 +175,7 @@ function blog_render_post(array $p, bool $isPreview = false): void {
       <h1><?= h($p['title']) ?></h1>
       <?php if (!empty($p['description'])): ?><p class="post-lede"><?= h($p['description']) ?></p><?php endif; ?>
     </header>
-    <?php if (!empty($p['cover'])): ?><figure class="post-cover"><img src="<?= h($p['cover']) ?>" alt="<?= h($p['coverAlt'] ?? '') ?>" decoding="async"></figure><?php endif; ?>
+    <?php if (!empty($p['cover'])): ?><figure class="post-cover"><img src="<?= h($p['cover']) ?>" alt="<?= h(($p['coverAlt'] ?? '') !== '' ? $p['coverAlt'] : ($p['title'] ?? '')) ?>" decoding="async"></figure><?php endif; ?>
     <div class="post-body"><?= $p['content'] ?? '' ?></div>
     <?php if (!empty($p['tags'])): ?><ul class="post-tags"><?php foreach ($p['tags'] as $t): ?><li><?= h($t) ?></li><?php endforeach; ?></ul><?php endif; ?>
     <aside class="post-cta">
@@ -192,7 +192,7 @@ function blog_render_404(): void {
     http_response_code(404);
     blog_head('Nie znaleziono wpisu · Blog', 'Tego wpisu nie ma.', SITE_URL . '/blog', SITE_URL . '/og-image.png');
     ?>
-<main id="main" class="post-wrap">
+<main id="main" class="post-wrap" tabindex="-1">
   <div class="wrap post-article" style="text-align:center">
     <h1>Nie ma takiego wpisu</h1>
     <p class="post-lede">Mógł zostać usunięty albo zmienił adres.</p>

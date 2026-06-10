@@ -8,6 +8,7 @@ require_once __DIR__ . '/lib/upload.php';
 require_once __DIR__ . '/lib/import.php';
 
 auth_init();
+send_security_headers();
 
 $action = (string)($_GET['action'] ?? '');
 $isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
@@ -157,7 +158,8 @@ function render_layout(string $title, string $body, bool $authed): void {
 <meta name="robots" content="noindex, nofollow">
 <title><?= h($title) ?> · Panel Krystian Grzyb</title>
 <link rel="icon" href="/favicon.png" type="image/png">
-<link rel="stylesheet" href="/admin/style.css?v=2">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/admin/style.css?v=3">
 </head>
 <body>
 <?php if ($authed): ?>
@@ -383,7 +385,7 @@ function view_edit(array $p, ?string $error): string {
   </form>
   <link href="/admin/vendor/quill/quill.snow.css?v=2.0.3" rel="stylesheet">
   <script src="/admin/vendor/quill/quill.js?v=2.0.3"></script>
-  <script>
+  <script nonce="<?= h(cms_nonce()) ?>">
   (function(){
     var csrf = <?= json_encode(csrf_token()) ?>;
     var ta = document.getElementById('content');

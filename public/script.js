@@ -65,6 +65,7 @@
         e.preventDefault();
         closeNav();
         window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+        if (hash === '#main') { var m = doc.getElementById('main'); if (m) m.focus({ preventScroll: true }); }
         return;
       }
       var target = doc.querySelector(hash);
@@ -80,6 +81,15 @@
   var navToggle = doc.querySelector('.nav-toggle');
   var mobileNav = doc.getElementById('mobile-nav');
 
+  function bgInert(on) {
+    // ukryj tlo (tresc + stopke) przed czytnikiem i klawiatura gdy menu otwarte
+    var regions = [doc.getElementById('main'), doc.querySelector('.site-footer')];
+    regions.forEach(function (el) {
+      if (!el) return;
+      if (on) { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); }
+      else { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); }
+    });
+  }
   function openNav() {
     if (!mobileNav) return;
     mobileNav.hidden = false;
@@ -90,6 +100,9 @@
       navToggle.setAttribute('aria-expanded', 'true');
       navToggle.setAttribute('aria-label', 'Zamknij menu');
     }
+    bgInert(true);
+    var first = mobileNav.querySelector('a, button');
+    if (first) first.focus();
   }
   function closeNav() {
     if (!body.classList.contains('is-nav-open')) return;
@@ -97,7 +110,9 @@
     if (navToggle) {
       navToggle.setAttribute('aria-expanded', 'false');
       navToggle.setAttribute('aria-label', 'Otwórz menu');
+      navToggle.focus();
     }
+    bgInert(false);
     window.setTimeout(function () {
       if (!body.classList.contains('is-nav-open') && mobileNav) mobileNav.hidden = true;
     }, 320);
@@ -162,7 +177,7 @@
   if (!acked) {
     var banner = doc.createElement('div');
     banner.className = 'cookies';
-    banner.setAttribute('role', 'dialog');
+    banner.setAttribute('role', 'region');
     banner.setAttribute('aria-label', 'Informacja o plikach cookies');
     banner.innerHTML =
       '<p>Ta strona używa wyłącznie technicznych plików potrzebnych do działania. Bez analityki, bez śledzenia, bez reklam.</p>' +
