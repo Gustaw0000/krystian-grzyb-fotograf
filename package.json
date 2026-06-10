@@ -10,6 +10,8 @@
     "start": "node server.js",
     "build:og": "node tools/build-og.js",
     "screenshot": "node tools/screenshot.js",
+    "build:static": "node build-static.js",
+    "deploy:ftp": "node build-static.js && node ftp-deploy.js",
     "postinstall": "playwright install chromium --with-deps 2>/dev/null || playwright install chromium || true"
   },
   "dependencies": {
@@ -17,6 +19,7 @@
     "express": "^4.21.2"
   },
   "devDependencies": {
+    "basic-ftp": "^5.0.5",
     "playwright": "^1.49.1",
     "sharp": "^0.34.5"
   }

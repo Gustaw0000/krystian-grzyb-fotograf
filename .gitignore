@@ -1,4 +1,5 @@
 node_modules/
+dist/
 public/_audit/
 test-results/
 playwright-report/
