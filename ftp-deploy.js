@@ -6,7 +6,9 @@ const path = require('path');
 const HOST = 'serwer452364.lh.pl';
 const USER = 'serwer452364';
 const PASS = process.env.FTP_PASS;
-const REMOTE_DIR = process.env.FTP_REMOTE_DIR || 'public_html/krystiangrzyb.pl';
+// UWAGA: aktywny katalog WWW domeny krystiangrzyb.pl to folder po starym WordPressie
+// (autoinstalator wskazal domene tutaj). NIE jest to public_html/krystiangrzyb.pl.
+const REMOTE_DIR = process.env.FTP_REMOTE_DIR || 'public_html/autoinstalator/krystiangrzyb.pl/wordpress163355';
 const LOCAL_DIR = path.join(__dirname, 'dist');
 
 async function tryUpload(secure) {
