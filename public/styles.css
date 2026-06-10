@@ -292,7 +292,9 @@ body.is-nav-open .mobile-nav { transform: translateX(0); opacity: 1; }
 .opinia-actions { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.3rem; }
 
 /* Google reviews widget */
-.reviews-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; text-align: center; gap: 0.7rem 1.3rem; padding: 1rem 1.4rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); margin-bottom: clamp(1.2rem, 2.5vw, 1.8rem); }
+/* Rowne odstepy nad i pod paskiem opinii, zeby siedzial dokladnie pomiedzy naglowkiem a kartami */
+.opinie .section-head { margin-bottom: clamp(1.9rem, 3.8vw, 2.7rem); }
+.reviews-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; text-align: center; gap: 0.7rem 1.3rem; padding: 1rem 1.4rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); margin-bottom: clamp(1.9rem, 3.8vw, 2.7rem); }
 .reviews-stars { color: var(--accent); letter-spacing: 0.12em; font-size: 1.05rem; }
 .reviews-bar-sub { color: var(--body); font-size: 0.92rem; }
 .reviews-bar-cta { min-height: 42px; padding: 0.5rem 1.2rem; }
