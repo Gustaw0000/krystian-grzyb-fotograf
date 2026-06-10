@@ -227,6 +227,7 @@ body.is-nav-open .mobile-nav { transform: translateX(0); opacity: 1; }
 .faq { background: var(--ink-2); }
 
 .section-head { max-width: 60ch; margin-bottom: clamp(2rem, 4vw, 3.4rem); }
+.section-head--center { margin-left: auto; margin-right: auto; text-align: center; }
 .section-head h2 { font-size: clamp(2rem, 4.6vw, 3.4rem); }
 .section-lede { color: var(--mid); margin-top: 0.9rem; font-size: 1.05rem; }
 
