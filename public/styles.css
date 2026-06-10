@@ -286,7 +286,7 @@ body.is-nav-open .mobile-nav { transform: translateX(0); opacity: 1; }
 .opinia-badge { align-self: flex-start; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--accent); border: 1px solid var(--accent-deep); border-radius: 999px; padding: 0.25rem 0.8rem; }
 .opinia-soon p { margin: 0; }
 .opinia-soon a { color: var(--accent); }
-.google-mark { display: inline-flex; align-items: center; gap: 0.7rem; margin-bottom: 1.1rem; }
+.google-mark { display: inline-flex; align-items: center; gap: 0.7rem; }
 .google-mark svg { flex: 0 0 auto; }
 .google-mark-text { font-family: var(--font-body); font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--paper); }
 .opinia-actions { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.3rem; }
@@ -294,7 +294,8 @@ body.is-nav-open .mobile-nav { transform: translateX(0); opacity: 1; }
 /* Google reviews widget */
 /* Rowne odstepy nad i pod paskiem opinii, zeby siedzial dokladnie pomiedzy naglowkiem a kartami */
 .opinie .section-head { margin-bottom: clamp(1.9rem, 3.8vw, 2.7rem); }
-.reviews-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; text-align: center; gap: 0.7rem 1.3rem; padding: 1rem 1.4rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); margin-bottom: clamp(1.9rem, 3.8vw, 2.7rem); }
+.reviews-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.7rem 1.3rem; padding: 1rem 1.4rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); margin-bottom: clamp(1.9rem, 3.8vw, 2.7rem); }
+.reviews-rating { display: inline-flex; align-items: center; gap: 0.55rem; }
 .reviews-stars { color: var(--accent); letter-spacing: 0.12em; font-size: 1.05rem; }
 .reviews-bar-sub { color: var(--body); font-size: 0.92rem; }
 .reviews-bar-cta { min-height: 42px; padding: 0.5rem 1.2rem; }
