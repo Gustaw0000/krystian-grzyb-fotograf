@@ -12,6 +12,7 @@
     "screenshot": "node tools/screenshot.js",
     "build:static": "node build-static.js",
     "deploy:ftp": "node build-static.js && node ftp-deploy.js",
+    "deploy:all": "node build-static.js && cross-env FTP_CMS=1 node ftp-deploy.js",
     "postinstall": "playwright install chromium --with-deps 2>/dev/null || playwright install chromium || true"
   },
   "dependencies": {

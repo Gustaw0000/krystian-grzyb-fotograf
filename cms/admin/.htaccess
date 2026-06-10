@@ -1,0 +1,15 @@
+# Panel admin — wlasne reguly (nie dziedziczymy z katalogu nadrzednego)
+RewriteEngine On
+
+# Wymus HTTPS (tylko gdy naprawde nie jest https — chroni przed petla za proxy lh.pl)
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+DirectoryIndex index.php
+
+# Zablokuj bezposredni dostep do kodu i danych
+RewriteRule ^(lib|data)/ - [F,L]
+
+# Brak listowania katalogow
+Options -Indexes

@@ -1,6 +1,11 @@
 node_modules/
 dist/
 public/_audit/
+
+# Dane bloga (tworzone na serwerze przez panel — nie wersjonujemy)
+cms/admin/data/users.json
+cms/admin/data/login-attempts.json
+cms/admin/data/posts/*.json
 test-results/
 playwright-report/
 .cache/

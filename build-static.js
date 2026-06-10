@@ -53,6 +53,7 @@ const SITEMAP_PATHS = [
   { path: '/#uslugi', priority: '0.7', changefreq: 'monthly' },
   { path: '/#o-mnie', priority: '0.6', changefreq: 'monthly' },
   { path: '/#kontakt', priority: '0.7', changefreq: 'monthly' },
+  { path: '/blog', priority: '0.7', changefreq: 'weekly' },
   { path: '/polityka-prywatnosci', priority: '0.3', changefreq: 'yearly' },
   { path: '/regulamin', priority: '0.3', changefreq: 'yearly' }
 ];
@@ -92,6 +93,10 @@ const htaccess = [
   '<IfModule mod_rewrite.c>',
   '  RewriteEngine On',
   '  RewriteBase /',
+  '',
+  '  # Blog (renderowany przez PHP)',
+  '  RewriteRule ^blog/?$ blog.php [L]',
+  '  RewriteRule ^blog/([a-z0-9-]+)/?$ blog.php?slug=$1 [L,QSA]',
   '',
   '  # /index.html -> /',
   '  RewriteCond %{THE_REQUEST} \\s/+index\\.html[\\s?] [NC]',
