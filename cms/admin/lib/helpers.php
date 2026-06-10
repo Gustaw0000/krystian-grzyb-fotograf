@@ -2,8 +2,9 @@
 // admin/lib/helpers.php — wspolne funkcje pomocnicze
 declare(strict_types=1);
 
-// Escapowanie do HTML
-function h(?string $s): string {
+// Escapowanie do HTML (odporne na nie-stringi z uszkodzonych/zewnetrznych danych)
+function h($s): string {
+    if (is_array($s) || is_object($s)) $s = '';
     return htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
@@ -34,8 +35,9 @@ function slugify(string $text): string {
     return $text;
 }
 
-// Data po polsku, np. 10 czerwca 2026
-function format_date_pl(string $iso): string {
+// Data po polsku, np. 10 czerwca 2026 (odporne na nie-stringi)
+function format_date_pl($iso): string {
+    if (!is_string($iso) || $iso === '') return '';
     $months = [1=>'stycznia','lutego','marca','kwietnia','maja','czerwca',
         'lipca','sierpnia','września','października','listopada','grudnia'];
     $ts = strtotime($iso);

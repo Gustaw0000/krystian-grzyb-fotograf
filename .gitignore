@@ -27,3 +27,7 @@ drive-download-*.zip
 momenty-*.jpg
 *.pdf
 .pexels-key
+
+# Wgrane zdjecia bloga (tworzone na serwerze)
+cms/img/blog/*
+!cms/img/blog/.htaccess

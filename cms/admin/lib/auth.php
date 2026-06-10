@@ -97,8 +97,8 @@ function rate_limit_record(string $ip, bool $success): void {
 }
 
 function client_ip(): string {
-    $xff = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
-    if ($xff !== '') return trim(explode(',', $xff)[0]);
+    // Do limitu prob logowania uzywamy WYLACZNIE REMOTE_ADDR.
+    // X-Forwarded-For jest sterowany przez klienta (latwo podrobic) i nie nadaje sie do decyzji bezpieczenstwa.
     return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 }
 

@@ -1,0 +1,8 @@
+# Katalog uploadow zdjec — calkowicie blokuj wykonywanie skryptow (defense-in-depth)
+php_flag engine off
+RemoveHandler .php .phtml .phar .cgi .pl .py .sh
+AddType text/plain .php .phtml .phar
+<FilesMatch "\.(php|phtml|phar|cgi|pl|py|sh)$">
+  Require all denied
+</FilesMatch>
+Options -ExecCGI -Indexes

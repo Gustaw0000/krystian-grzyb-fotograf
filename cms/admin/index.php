@@ -5,17 +5,18 @@ declare(strict_types=1);
 require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/posts.php';
 require_once __DIR__ . '/lib/upload.php';
+require_once __DIR__ . '/lib/import.php';
 
 auth_init();
 
 $action = (string)($_GET['action'] ?? '');
 $isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
 
-function flash(string $type, string $msg): void { $_SESSION['flash'] = ['type' => $type, 'msg' => $msg]; }
+function flash(string $t, string $m): void { $_SESSION['flash'] = ['type' => $t, 'msg' => $m]; }
 function take_flash(): ?array { $f = $_SESSION['flash'] ?? null; unset($_SESSION['flash']); return $f; }
 function redirect(string $to): void { header('Location: ' . $to); exit; }
 
-/* ============================ PIERWSZE URUCHOMIENIE ======================== */
+/* ===== PIERWSZE URUCHOMIENIE ===== */
 if (!has_users()) {
     if ($isPost && $action === 'setup') {
         csrf_check();
@@ -24,96 +25,127 @@ if (!has_users()) {
             login_attempt((string)$_POST['username'], (string)$_POST['password']);
             flash('ok', 'Konto utworzone. Witaj w panelu!');
             redirect('/admin/');
-        } catch (Throwable $e) {
-            $error = $e->getMessage();
-        }
+        } catch (Throwable $e) { $error = $e->getMessage(); }
     }
     render_layout('Pierwsze uruchomienie', view_setup($error ?? null), false);
     exit;
 }
 
-/* ================================ LOGOWANIE =============================== */
+/* ===== LOGOWANIE ===== */
 if ($action === 'login') {
     if (is_logged_in()) redirect('/admin/');
     if ($isPost) {
         csrf_check();
-        $remaining = rate_limit_remaining(client_ip());
-        if ($remaining > 0) {
-            $error = 'Za duzo prob logowania. Sprobuj za ' . ceil($remaining / 60) . ' min.';
+        if (rate_limit_remaining(client_ip()) > 0) {
+            $error = 'Za duzo prob logowania. Sprobuj za ' . ceil(rate_limit_remaining(client_ip()) / 60) . ' min.';
         } elseif (login_attempt((string)($_POST['username'] ?? ''), (string)($_POST['password'] ?? ''))) {
             redirect('/admin/');
-        } else {
-            $error = 'Bledny login lub haslo.';
-        }
+        } else { $error = 'Bledny login lub haslo.'; }
     }
     render_layout('Logowanie', view_login($error ?? null), false);
     exit;
 }
-
 if ($action === 'logout') {
-    logout();
+    if ($isPost) { csrf_check(); logout(); }
     redirect('/admin/?action=login');
 }
 
-/* ===================== OD TEGO MIEJSCA WYMAGANE LOGOWANIE ================= */
+/* ===== WYMAGANE LOGOWANIE PONIZEJ ===== */
 require_login();
 
-/* -------- Upload obrazu (AJAX, zwraca JSON) -------- */
+/* Upload obrazu (AJAX JSON) */
 if ($action === 'upload' && $isPost) {
     header('Content-Type: application/json; charset=utf-8');
     try {
         csrf_check();
-        $res = handle_image_upload($_FILES['image'] ?? []);
+        $res = handle_image_upload($_FILES['file'] ?? $_FILES['image'] ?? []);
         echo json_encode(['ok' => true] + $res);
-    } catch (Throwable $e) {
-        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
-    }
+    } catch (Throwable $e) { echo json_encode(['ok' => false, 'error' => $e->getMessage()]); }
     exit;
 }
 
-/* -------- Zapis postu -------- */
+/* Zapis postu */
 if ($action === 'save' && $isPost) {
     csrf_check();
     try {
         $orig = trim($_POST['originalSlug'] ?? '') !== '' ? $_POST['originalSlug'] : null;
         $post = save_post($_POST, $orig);
-        flash('ok', 'Zapisano post: ' . $post['title']);
+        flash('ok', 'Zapisano: ' . $post['title']);
         redirect('/admin/?action=edit&slug=' . urlencode($post['slug']));
     } catch (Throwable $e) {
-        $error = $e->getMessage();
-        $draft = $_POST;
-        render_layout('Edycja postu', view_edit($draft, $error), true);
+        render_layout('Edycja postu', view_edit($_POST, $e->getMessage()), true);
         exit;
     }
 }
 
-/* -------- Usuwanie -------- */
-if ($action === 'delete' && $isPost) {
+/* Kosz: do kosza / przywroc / usun na zawsze */
+if ($action === 'archive' && $isPost) {
     csrf_check();
-    $slug = (string)($_POST['slug'] ?? '');
-    if (delete_post($slug)) flash('ok', 'Post usuniety.');
-    else flash('err', 'Nie znaleziono postu.');
+    $ok = archive_post((string)($_POST['slug'] ?? ''));
+    flash($ok ? 'ok' : 'err', $ok ? 'Przeniesiono do kosza.' : 'Nie znaleziono postu.');
     redirect('/admin/');
 }
+if ($action === 'restore' && $isPost) {
+    csrf_check();
+    try { $p = restore_post((string)($_POST['file'] ?? '')); flash('ok', 'Przywrocono: ' . $p['title']); }
+    catch (Throwable $e) { flash('err', $e->getMessage()); }
+    redirect('/admin/?action=trash');
+}
+if ($action === 'purge' && $isPost) {
+    csrf_check();
+    flash(purge_post((string)($_POST['file'] ?? '')) ? 'ok' : 'err', 'Usunieto na zawsze.');
+    redirect('/admin/?action=trash');
+}
+if ($action === 'duplicate' && $isPost) {
+    csrf_check();
+    $c = duplicate_post((string)($_POST['slug'] ?? ''));
+    if ($c) { flash('ok', 'Utworzono kopie (szkic).'); redirect('/admin/?action=edit&slug=' . urlencode($c['slug'])); }
+    flash('err', 'Nie znaleziono postu.'); redirect('/admin/');
+}
 
-/* -------- Nowy / edycja -------- */
-if ($action === 'new') {
-    render_layout('Nowy post', view_edit(['date' => date('Y-m-d'), 'status' => 'published'], null), true);
+/* Import */
+if ($action === 'import') {
+    if ($isPost) {
+        csrf_check();
+        $res = import_result_new();
+        try { run_import($_POST, $_FILES, $res); }
+        catch (Throwable $e) { $res['errors'][] = 'Blad importu: ' . $e->getMessage(); }
+        render_layout('Wynik importu', view_import($res), true);
+        exit;
+    }
+    render_layout('Import postow', view_import(null), true);
     exit;
 }
+
+/* Podglad (takze szkice — tylko zalogowany) */
+if ($action === 'preview') {
+    $post = load_post((string)($_GET['slug'] ?? ''));
+    if (!$post) { flash('err', 'Nie znaleziono postu.'); redirect('/admin/'); }
+    require_once __DIR__ . '/../blog-render.php';
+    blog_render_post($post, true);
+    exit;
+}
+
+/* Nowy / edycja */
+if ($action === 'new') { render_layout('Nowy post', view_edit(['date' => date('Y-m-d'), 'status' => 'published'], null), true); exit; }
 if ($action === 'edit') {
     $post = load_post((string)($_GET['slug'] ?? ''));
     if (!$post) { flash('err', 'Nie znaleziono postu.'); redirect('/admin/'); }
     render_layout('Edycja: ' . $post['title'], view_edit($post, null), true);
     exit;
 }
+if ($action === 'trash') { render_layout('Kosz', view_trash(list_trashed()), true); exit; }
 
-/* -------- Pulpit (lista) -------- */
-render_layout('Twoje posty', view_list(list_posts()), true);
+/* Pulpit (lista + szukajka + filtr) */
+$q = trim((string)($_GET['q'] ?? ''));
+$statusF = (string)($_GET['status'] ?? '');
+$posts = list_posts();
+if ($q !== '') $posts = array_values(array_filter($posts, fn($p) => mb_stripos($p['title'] ?? '', $q) !== false));
+if (in_array($statusF, ['published', 'draft'], true)) $posts = array_values(array_filter($posts, fn($p) => ($p['status'] ?? 'published') === $statusF));
+render_layout('Twoje posty', view_list($posts, $q, $statusF), true);
 
 
-/* =============================== WIDOKI =================================== */
-
+/* ============================== WIDOKI ============================== */
 function render_layout(string $title, string $body, bool $authed): void {
     $flash = take_flash();
     $u = current_user();
@@ -125,7 +157,7 @@ function render_layout(string $title, string $body, bool $authed): void {
 <meta name="robots" content="noindex, nofollow">
 <title><?= h($title) ?> · Panel Krystian Grzyb</title>
 <link rel="icon" href="/favicon.png" type="image/png">
-<link rel="stylesheet" href="/admin/style.css">
+<link rel="stylesheet" href="/admin/style.css?v=2">
 </head>
 <body>
 <?php if ($authed): ?>
@@ -133,10 +165,12 @@ function render_layout(string $title, string $body, bool $authed): void {
   <a href="/admin/" class="adm-brand">Panel bloga</a>
   <nav class="adm-topnav">
     <a href="/admin/">Posty</a>
-    <a href="/admin/?action=new" class="adm-btn adm-btn-sm">Nowy post</a>
-    <a href="/blog" target="_blank" rel="noopener">Zobacz blog</a>
+    <a href="/admin/?action=new">Nowy post</a>
+    <a href="/admin/?action=import">Import</a>
+    <a href="/admin/?action=trash">Kosz</a>
+    <a href="/blog" target="_blank" rel="noopener">Zobacz blog ↗</a>
     <span class="adm-user"><?= h((string)$u) ?></span>
-    <a href="/admin/?action=logout" class="adm-logout">Wyloguj</a>
+    <form method="post" action="/admin/?action=logout" class="adm-logout-form"><?= csrf_field() ?><button type="submit" class="adm-logout">Wyloguj</button></form>
   </nav>
 </header>
 <?php endif; ?>
@@ -180,17 +214,24 @@ function view_login(?string $error): string {
 <?php return (string)ob_get_clean();
 }
 
-function view_list(array $posts): string {
+function view_list(array $posts, string $q, string $statusF): string {
     ob_start(); ?>
   <div class="adm-head">
     <h1>Twoje posty</h1>
     <a href="/admin/?action=new" class="adm-btn">+ Nowy post</a>
   </div>
+  <form class="adm-filters" method="get" action="/admin/">
+    <input type="search" name="q" value="<?= h($q) ?>" placeholder="Szukaj po tytule...">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">Wszystkie</option>
+      <option value="published" <?= $statusF === 'published' ? 'selected' : '' ?>>Opublikowane</option>
+      <option value="draft" <?= $statusF === 'draft' ? 'selected' : '' ?>>Szkice</option>
+    </select>
+    <button class="adm-btn adm-btn-sm" type="submit">Szukaj</button>
+    <?php if ($q !== '' || $statusF !== ''): ?><a class="adm-link" href="/admin/">Wyczysc</a><?php endif; ?>
+  </form>
   <?php if (!$posts): ?>
-    <div class="adm-empty">
-      <p>Nie masz jeszcze zadnego wpisu.</p>
-      <a href="/admin/?action=new" class="adm-btn">Napisz pierwszy post</a>
-    </div>
+    <div class="adm-empty"><p>Brak postow<?= ($q !== '' || $statusF !== '') ? ' dla tego filtra' : '' ?>.</p><a href="/admin/?action=new" class="adm-btn">Napisz pierwszy post</a></div>
   <?php else: ?>
     <div class="adm-list">
       <?php foreach ($posts as $p): ?>
@@ -201,17 +242,14 @@ function view_list(array $posts): string {
             <div class="adm-row-meta">
               <?= h(format_date_pl($p['date'] ?? '')) ?>
               <?php if (($p['status'] ?? 'published') === 'draft'): ?><span class="adm-badge">szkic</span><?php else: ?><span class="adm-badge adm-badge-ok">opublikowany</span><?php endif; ?>
-              · <?= (int)($p['readTime'] ?? 1) ?> min czytania
+              · <?= (int)($p['readTime'] ?? 1) ?> min
             </div>
           </div>
           <div class="adm-row-actions">
-            <a class="adm-link" href="/blog/<?= h($p['slug']) ?>" target="_blank" rel="noopener">Podglad</a>
+            <a class="adm-link" href="/admin/?action=preview&slug=<?= urlencode($p['slug']) ?>" target="_blank" rel="noopener">Podglad</a>
             <a class="adm-link" href="/admin/?action=edit&slug=<?= urlencode($p['slug']) ?>">Edytuj</a>
-            <form method="post" action="/admin/?action=delete" onsubmit="return confirm('Usunac ten post na zawsze?');">
-              <?= csrf_field() ?>
-              <input type="hidden" name="slug" value="<?= h($p['slug']) ?>">
-              <button class="adm-link adm-link-danger" type="submit">Usun</button>
-            </form>
+            <form method="post" action="/admin/?action=duplicate"><?= csrf_field() ?><input type="hidden" name="slug" value="<?= h($p['slug']) ?>"><button class="adm-link" type="submit">Duplikuj</button></form>
+            <form method="post" action="/admin/?action=archive" onsubmit="return confirm('Przeniesc do kosza?');"><?= csrf_field() ?><input type="hidden" name="slug" value="<?= h($p['slug']) ?>"><button class="adm-link adm-link-danger" type="submit">Do kosza</button></form>
           </div>
         </article>
       <?php endforeach; ?>
@@ -220,8 +258,79 @@ function view_list(array $posts): string {
 <?php return (string)ob_get_clean();
 }
 
+function view_trash(array $trashed): string {
+    ob_start(); ?>
+  <div class="adm-head"><h1>Kosz</h1><a href="/admin/" class="adm-link">&larr; Wroc do postow</a></div>
+  <?php if (!$trashed): ?>
+    <div class="adm-empty"><p>Kosz jest pusty.</p></div>
+  <?php else: ?>
+    <p class="adm-muted" style="margin-bottom:1rem">Posty w koszu nie sa widoczne na blogu. Mozesz je przywrocic lub usunac na zawsze.</p>
+    <div class="adm-list">
+      <?php foreach ($trashed as $p): ?>
+        <article class="adm-row">
+          <?php if (!empty($p['cover'])): ?><img class="adm-thumb" src="<?= h($p['cover']) ?>" alt=""><?php else: ?><span class="adm-thumb adm-thumb-empty">KG</span><?php endif; ?>
+          <div class="adm-row-main">
+            <span class="adm-row-title"><?= h($p['title']) ?></span>
+            <div class="adm-row-meta">w koszu od <?= h(format_date_pl(substr($p['_trashedAt'] ?? '', 0, 10))) ?></div>
+          </div>
+          <div class="adm-row-actions">
+            <form method="post" action="/admin/?action=restore"><?= csrf_field() ?><input type="hidden" name="file" value="<?= h($p['_trashFile']) ?>"><button class="adm-link" type="submit">Przywroc</button></form>
+            <form method="post" action="/admin/?action=purge" onsubmit="return confirm('Usunac NA ZAWSZE? Tego nie da sie cofnac.');"><?= csrf_field() ?><input type="hidden" name="file" value="<?= h($p['_trashFile']) ?>"><button class="adm-link adm-link-danger" type="submit">Usun na zawsze</button></form>
+          </div>
+        </article>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+<?php return (string)ob_get_clean();
+}
+
+function view_import(?array $result): string {
+    ob_start();
+    if ($result !== null):
+        $i = count($result['imported']); $s = count($result['skipped']); $e = count($result['errors']); ?>
+    <div class="adm-head"><h1>Wynik importu</h1><a href="/admin/" class="adm-link">&larr; Posty</a></div>
+    <div class="adm-import-stats">
+      <div class="adm-stat ok"><b><?= $i ?></b><span>zaimportowano</span></div>
+      <div class="adm-stat warn"><b><?= $s ?></b><span>pominieto</span></div>
+      <div class="adm-stat err"><b><?= $e ?></b><span>bledow</span></div>
+      <div class="adm-stat"><b><?= (int)$result['total'] ?></b><span>rekordow</span></div>
+    </div>
+    <?php if ($i): ?><div class="adm-box"><b>Zaimportowane:</b><ul class="adm-implist"><?php foreach ($result['imported'] as $sl): ?><li><a href="/admin/?action=edit&slug=<?= urlencode($sl) ?>"><?= h($sl) ?></a> · <a href="/blog/<?= h($sl) ?>" target="_blank" rel="noopener">/blog/<?= h($sl) ?> ↗</a></li><?php endforeach; ?></ul></div><?php endif; ?>
+    <?php if ($s): ?><div class="adm-box"><b>Pominiete (duplikaty):</b><ul class="adm-implist"><?php foreach ($result['skipped'] as $m): ?><li><?= h($m) ?></li><?php endforeach; ?></ul><p class="adm-muted">Zaznacz „Nadpisz istniejace", zeby je zastapic.</p></div><?php endif; ?>
+    <?php if ($e): ?><div class="adm-box"><b>Bledy:</b><ul class="adm-implist adm-implist-err"><?php foreach ($result['errors'] as $m): ?><li><?= h($m) ?></li><?php endforeach; ?></ul></div><?php endif; ?>
+    <a href="/admin/?action=import" class="adm-btn">Importuj kolejne</a>
+  <?php else: ?>
+    <div class="adm-head"><h1>Import postow</h1><a href="/admin/" class="adm-link">&larr; Posty</a></div>
+    <form method="post" action="/admin/?action=import" enctype="multipart/form-data" class="adm-form-import">
+      <?= csrf_field() ?>
+      <div class="adm-box">
+        <span class="adm-box-title">Opcja A — wgraj pliki</span>
+        <p class="adm-muted">Obslugiwane: <code>.md</code> / <code>.markdown</code> / <code>.txt</code> (Markdown), <code>.html</code> (HTML), <code>.json</code> (pojedynczy wpis lub lista), <code>.csv</code> (kolumny: title, content, date, description, tags...). Mozesz wgrac wiele plikow naraz.</p>
+        <input type="file" name="files[]" multiple accept=".md,.markdown,.txt,.html,.htm,.json,.csv">
+      </div>
+      <div class="adm-box">
+        <span class="adm-box-title">Opcja B — wklej tresc</span>
+        <label class="adm-field">Tytul<input type="text" name="paste_title" placeholder="Tytul wpisu"></label>
+        <label class="adm-field">Format
+          <select name="paste_format"><option value="html">HTML</option><option value="markdown">Markdown</option></select>
+        </label>
+        <label class="adm-field">Tresc<textarea name="paste_content" rows="8" placeholder="Wklej tu HTML lub Markdown..."></textarea></label>
+      </div>
+      <div class="adm-box adm-import-opts">
+        <label class="adm-check"><input type="checkbox" name="overwrite" value="1"> Nadpisz istniejace (po slug)</label>
+        <label class="adm-field" style="max-width:220px">Status importowanych
+          <select name="status"><option value="published">Opublikowane</option><option value="draft">Szkice</option></select>
+        </label>
+      </div>
+      <button class="adm-btn" type="submit">Importuj</button>
+    </form>
+  <?php endif;
+    return (string)ob_get_clean();
+}
+
 function view_edit(array $p, ?string $error): string {
-    $isNew = empty($p['slug']);
+    $isNew = empty($p['slug']) && empty($p['originalSlug']);
+    $slug = $p['slug'] ?? ($p['originalSlug'] ?? '');
     ob_start(); ?>
   <div class="adm-head">
     <h1><?= $isNew ? 'Nowy post' : 'Edycja postu' ?></h1>
@@ -230,120 +339,121 @@ function view_edit(array $p, ?string $error): string {
   <?php if ($error): ?><div class="adm-alert"><?= h($error) ?></div><?php endif; ?>
   <form method="post" action="/admin/?action=save" class="adm-form" id="postForm">
     <?= csrf_field() ?>
-    <input type="hidden" name="originalSlug" value="<?= h($p['slug'] ?? '') ?>">
+    <input type="hidden" name="originalSlug" value="<?= h($p['originalSlug'] ?? $p['slug'] ?? '') ?>">
     <div class="adm-grid">
       <div class="adm-col-main">
         <label class="adm-field">Tytul
-          <input type="text" name="title" required value="<?= h($p['title'] ?? '') ?>" placeholder="np. Jak przygotowac salę na osiemnastkę">
+          <input type="text" name="title" id="titleInput" required value="<?= h($p['title'] ?? '') ?>" placeholder="np. Jak przygotowac salę na osiemnastkę">
         </label>
-
-        <label class="adm-field">Tresc
-          <span class="adm-hint">Formatowanie: <code>## Naglowek</code>, <code>**pogrubienie**</code>, <code>*kursywa*</code>, <code>- lista</code>, <code>&gt; cytat</code>, <code>[link](https://...)</code>. Pusta linia = nowy akapit.</span>
-          <div class="adm-toolbar">
-            <button type="button" class="adm-tool" data-wrap="**">Pogrubienie</button>
-            <button type="button" class="adm-tool" data-wrap="*">Kursywa</button>
-            <button type="button" class="adm-tool" data-prefix="## ">Naglowek</button>
-            <button type="button" class="adm-tool" data-prefix="- ">Lista</button>
-            <button type="button" class="adm-tool" data-prefix="&gt; ">Cytat</button>
-            <button type="button" class="adm-tool" id="insertImgBtn">+ Zdjecie w tresci</button>
-            <input type="file" id="inlineImg" accept="image/*" hidden>
+        <div class="adm-field">
+          <span>Tresc <span class="adm-hint">Pisz jak w Wordzie. Pogrubienie, nagłówki, listy, cytaty, linki i zdjęcia z paska u góry. Zdjęcie wstawisz też przez Ctrl+V.</span></span>
+          <div class="adm-editor-meta"><span id="wc">0 słów</span> · <span id="rt">~1 min</span></div>
+          <div class="adm-editor-wrap">
+            <textarea id="content" name="content" class="adm-editor-textarea" placeholder="Pisz tutaj..."><?= h($p['content'] ?? '') ?></textarea>
+            <div id="editor" hidden></div>
           </div>
-          <textarea name="content" id="content" rows="18" required placeholder="Napisz swoj wpis..."><?= h($p['content'] ?? '') ?></textarea>
-        </label>
+        </div>
       </div>
-
       <aside class="adm-col-side">
         <div class="adm-box">
           <button class="adm-btn adm-btn-wide" type="submit">Zapisz post</button>
+          <?php if (!$isNew): ?><a class="adm-btn adm-btn-ghost adm-btn-wide adm-mt" href="/admin/?action=preview&slug=<?= urlencode($slug) ?>" target="_blank" rel="noopener">Podgląd ↗</a><?php endif; ?>
           <label class="adm-field adm-mt">Status
-            <select name="status">
-              <option value="published" <?= ($p['status'] ?? 'published') === 'published' ? 'selected' : '' ?>>Opublikowany</option>
-              <option value="draft" <?= ($p['status'] ?? '') === 'draft' ? 'selected' : '' ?>>Szkic (niewidoczny)</option>
-            </select>
+            <select name="status"><option value="published" <?= ($p['status'] ?? 'published') === 'published' ? 'selected' : '' ?>>Opublikowany</option><option value="draft" <?= ($p['status'] ?? '') === 'draft' ? 'selected' : '' ?>>Szkic (niewidoczny)</option></select>
           </label>
-          <label class="adm-field">Data
-            <input type="date" name="date" value="<?= h($p['date'] ?? date('Y-m-d')) ?>">
+          <label class="adm-field">Data<input type="date" name="date" value="<?= h($p['date'] ?? date('Y-m-d')) ?>"></label>
+          <label class="adm-field">Slug (adres URL)
+            <input type="text" name="slug" id="slugInput" value="<?= h($p['slug'] ?? '') ?>" pattern="[a-z0-9-]+" placeholder="auto z tytulu">
           </label>
         </div>
-
         <div class="adm-box">
           <span class="adm-box-title">Zdjecie glowne</span>
-          <div class="adm-cover" id="coverBox">
-            <img id="coverPreview" src="<?= h($p['cover'] ?? '') ?>" alt="" <?= empty($p['cover']) ? 'hidden' : '' ?>>
-            <p class="adm-muted" id="coverEmpty" <?= empty($p['cover']) ? '' : 'hidden' ?>>Brak zdjecia</p>
-          </div>
+          <div class="adm-cover"><img id="coverPreview" src="<?= h($p['cover'] ?? '') ?>" alt="" <?= empty($p['cover']) ? 'hidden' : '' ?>><p class="adm-muted" id="coverEmpty" <?= empty($p['cover']) ? '' : 'hidden' ?>>Brak zdjecia</p></div>
           <input type="hidden" name="cover" id="cover" value="<?= h($p['cover'] ?? '') ?>">
           <input type="file" id="coverFile" accept="image/*" hidden>
           <button type="button" class="adm-btn adm-btn-ghost adm-btn-wide" id="coverBtn">Wgraj zdjecie</button>
-          <label class="adm-field adm-mt">Opis zdjecia (alt)
-            <input type="text" name="coverAlt" value="<?= h($p['coverAlt'] ?? '') ?>" placeholder="co przedstawia zdjecie">
-          </label>
+          <label class="adm-field adm-mt">Opis zdjecia (alt)<input type="text" name="coverAlt" value="<?= h($p['coverAlt'] ?? '') ?>" placeholder="co przedstawia zdjecie"></label>
         </div>
-
         <div class="adm-box">
-          <label class="adm-field">Krotki opis (SEO)
-            <textarea name="description" rows="3" maxlength="200" placeholder="1-2 zdania do Google i social media"><?= h($p['description'] ?? '') ?></textarea>
-          </label>
-          <label class="adm-field">Tagi (po przecinku)
-            <input type="text" name="tags" value="<?= h(is_array($p['tags'] ?? null) ? implode(', ', $p['tags']) : ($p['tags'] ?? '')) ?>" placeholder="osiemnastka, reportaz">
-          </label>
+          <label class="adm-field">Krotki opis (SEO)<textarea name="description" rows="3" maxlength="200" placeholder="1-2 zdania do Google"><?= h($p['description'] ?? '') ?></textarea></label>
+          <label class="adm-field">Tagi (po przecinku)<input type="text" name="tags" value="<?= h(is_array($p['tags'] ?? null) ? implode(', ', $p['tags']) : ($p['tags'] ?? '')) ?>" placeholder="osiemnastka, reportaz"></label>
         </div>
       </aside>
     </div>
   </form>
+  <link href="/admin/vendor/quill/quill.snow.css?v=2.0.3" rel="stylesheet">
+  <script src="/admin/vendor/quill/quill.js?v=2.0.3"></script>
   <script>
   (function(){
     var csrf = <?= json_encode(csrf_token()) ?>;
     var ta = document.getElementById('content');
+    var form = document.getElementById('postForm');
+    var wc = document.getElementById('wc'), rt = document.getElementById('rt');
+    var quill = null;
 
-    function wrapSel(before, after){
-      var s=ta.selectionStart, e=ta.selectionEnd, v=ta.value;
-      ta.value = v.slice(0,s) + before + v.slice(s,e) + after + v.slice(e);
-      ta.focus(); ta.selectionStart = s + before.length; ta.selectionEnd = e + before.length;
+    function stats(text){
+      var words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+      wc.textContent = words + ' słów';
+      rt.textContent = '~' + Math.max(1, Math.ceil(words/200)) + ' min';
     }
-    function prefixLine(pfx){
-      var s=ta.selectionStart, v=ta.value;
-      var ls=v.lastIndexOf('\n',s-1)+1;
-      ta.value = v.slice(0,ls) + pfx + v.slice(ls);
-      ta.focus();
-    }
-    document.querySelectorAll('.adm-tool[data-wrap]').forEach(function(b){
-      b.addEventListener('click', function(){ var w=b.getAttribute('data-wrap'); wrapSel(w,w); });
-    });
-    document.querySelectorAll('.adm-tool[data-prefix]').forEach(function(b){
-      b.addEventListener('click', function(){ prefixLine(b.getAttribute('data-prefix').replace('&gt;','>')); });
-    });
+    function strip(html){ var d=document.createElement('div'); d.innerHTML=html||''; return (d.textContent||'').trim(); }
 
     function upload(file, cb){
-      var fd = new FormData(); fd.append('image', file); fd.append('csrf', csrf);
-      fetch('/admin/?action=upload', {method:'POST', body:fd})
+      if(!file || !file.type.startsWith('image/')){ alert('To nie jest obraz.'); return; }
+      var fd=new FormData(); fd.append('file',file); fd.append('csrf',csrf);
+      fetch('/admin/?action=upload',{method:'POST',body:fd,headers:{'X-CSRF-Token':csrf}})
         .then(function(r){return r.json();})
-        .then(function(j){ if(j.ok) cb(j.url); else alert('Blad: '+j.error); })
+        .then(function(j){ if(j.ok) cb(j.url); else alert('Blad: '+(j.error||'upload')); })
         .catch(function(){ alert('Nie udalo sie wyslac pliku.'); });
     }
 
+    function initQuill(){
+      if (typeof Quill === 'undefined') return false;
+      document.getElementById('editor').innerHTML = ta.value;
+      document.getElementById('editor').hidden = false;
+      ta.style.display = 'none';
+      quill = new Quill('#editor', {
+        theme:'snow',
+        modules:{ toolbar:{ container:[
+          [{header:[2,3,4,false]}],
+          ['bold','italic','underline','strike'],
+          [{color:[]},{background:[]}],
+          ['blockquote','code-block'],
+          [{list:'ordered'},{list:'bullet'}],
+          [{align:[]}],
+          ['link','image'],
+          ['clean']
+        ], handlers:{ image:function(){
+          var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.click();
+          inp.onchange=function(){ if(inp.files[0]) upload(inp.files[0], function(url){ var r=quill.getSelection(true); quill.insertEmbed(r.index,'image',url,'user'); quill.setSelection(r.index+1); }); };
+        }}}},
+        placeholder:'Pisz tutaj...'
+      });
+      quill.on('text-change', function(){ stats(quill.getText().trim()); });
+      quill.root.addEventListener('paste', function(e){
+        var items=(e.clipboardData||e.originalEvent.clipboardData).items;
+        for (var i=0;i<items.length;i++){ if(items[i].type.indexOf('image')===0){ e.preventDefault(); upload(items[i].getAsFile(), function(url){ var r=quill.getSelection(true); quill.insertEmbed(r.index,'image',url,'user'); quill.setSelection(r.index+1); }); return; } }
+      });
+      stats(quill.getText().trim());
+      return true;
+    }
+    if(!initQuill()){ ta.addEventListener('input', function(){ stats(strip(ta.value)); }); stats(strip(ta.value)); window.addEventListener('load', function(){ if(!quill) initQuill(); }); }
+
+    // cover upload
     var coverBtn=document.getElementById('coverBtn'), coverFile=document.getElementById('coverFile');
     coverBtn.addEventListener('click', function(){ coverFile.click(); });
-    coverFile.addEventListener('change', function(){
-      if(!coverFile.files[0]) return;
-      coverBtn.textContent='Wgrywam...';
-      upload(coverFile.files[0], function(url){
-        document.getElementById('cover').value=url;
-        var img=document.getElementById('coverPreview'); img.src=url; img.hidden=false;
-        document.getElementById('coverEmpty').hidden=true; coverBtn.textContent='Zmien zdjecie';
-      });
-    });
+    coverFile.addEventListener('change', function(){ if(!coverFile.files[0]) return; coverBtn.textContent='Wgrywam...'; upload(coverFile.files[0], function(url){ document.getElementById('cover').value=url; var img=document.getElementById('coverPreview'); img.src=url; img.hidden=false; document.getElementById('coverEmpty').hidden=true; coverBtn.textContent='Zmien zdjecie'; }); });
 
-    var insBtn=document.getElementById('insertImgBtn'), inl=document.getElementById('inlineImg');
-    insBtn.addEventListener('click', function(){ inl.click(); });
-    inl.addEventListener('change', function(){
-      if(!inl.files[0]) return;
-      insBtn.textContent='Wgrywam...';
-      upload(inl.files[0], function(url){
-        var s=ta.selectionStart, snippet='\n\n![zdjecie]('+url+')\n\n';
-        ta.value = ta.value.slice(0,s) + snippet + ta.value.slice(s);
-        insBtn.textContent='+ Zdjecie w tresci';
-      });
+    // auto-slug
+    var titleInput=document.getElementById('titleInput'), slugInput=document.getElementById('slugInput');
+    var slugEdited = !!slugInput.value;
+    function slugify(s){ var m={'ą':'a','ć':'c','ę':'e','ł':'l','ń':'n','ó':'o','ś':'s','ż':'z','ź':'z'}; return s.toLowerCase().replace(/[ąćęłńóśżź]/g,function(c){return m[c]||c;}).replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+    titleInput.addEventListener('input', function(){ if(!slugEdited) slugInput.value=slugify(titleInput.value); });
+    slugInput.addEventListener('input', function(){ slugEdited=true; });
+
+    // mirror Quill -> textarea on submit
+    form.addEventListener('submit', function(e){
+      if (quill){ var html=quill.root.innerHTML.trim(); if(!html||html==='<p><br></p>'){ e.preventDefault(); alert('Tresc nie moze byc pusta.'); return; } ta.value=html; }
     });
   })();
   </script>

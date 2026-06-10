@@ -7,6 +7,11 @@ require_once __DIR__ . '/helpers.php';
 function uploads_dir(): string {
     $d = project_root() . '/img/blog';
     if (!is_dir($d)) mkdir($d, 0775, true);
+    // Wylacz wykonywanie skryptow w katalogu uploadow (defense-in-depth)
+    $ht = $d . '/.htaccess';
+    if (!is_file($ht)) {
+        @file_put_contents($ht, "php_flag engine off\nRemoveHandler .php .phtml .phar .cgi .pl .py .sh\nAddType text/plain .php .phtml .phar\n<FilesMatch \"\\.(php|phtml|phar|cgi|pl|py|sh)$\">\n  Require all denied\n</FilesMatch>\nOptions -ExecCGI -Indexes\n");
+    }
     return $d;
 }
 
